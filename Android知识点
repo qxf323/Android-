@@ -137,17 +137,174 @@ Hashtable 和 HashMap 采用的 hash/rehash 算法都大概一样，所以性能
 
 Android 方面
 16、如何导入外部数据库？
+1). 把原数据库包括在项目源码的 res/raw 目录下，然后建立一个DBManager类
+InputStream is = this.context.getResources().openRawResource(
+                        R.raw.countries); //欲导入的数据库
+                FileOutputStream fos = new FileOutputStream(dbfile);
+                byte[] buffer = new byte[BUFFER_SIZE];
+                int count = 0;
+                while ((count = is.read(buffer)) > 0) {
+                    fos.write(buffer, 0, count);
+                }
+                fos.close();
+                is.close();
+            }
+            SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(dbfile,
+                    null);
+
 17、本地广播和全局广播有什么差别？
+
+1)、本地广播：发送的广播事件不被其他应用程序获取，也不能响应其他应用程序发送的广播事件。本地广播只能被动态注册，不能静态注册。动态注册或方法时需要用到LocalBroadcastManager。
+2)、全局广播：发送的广播事件可被其他应用程序获取，也能响应其他应用程序发送的广播事件（可以通过 exported–是否监听其他应用程序发送的广播 在清单文件中控制） 全局广播既可以动态注册，也可以静态注册。
+
 18、intentService作用是什么,AIDL解决了什么问题-小米
+1),生成一个默认的且与主线程互相独立的工作者线程来执行所有传送至onStartCommand() 方法的Intetnt。
+2),生成一个工作队列来传送Intent对象给你的onHandleIntent()方法，同一时刻只传送一个Intent对象，这样一来，你就不必担心多线程的问题。在所有的请求(Intent)都被执行完以后会自动停止服务，所以，你不需要自己去调用stopSelf()方法来停止。
+3),该服务提供了一个onBind()方法的默认实现，它返回null
+4),提供了一个onStartCommand()方法的默认实现，它将Intent先传送至工作队列，然后从工作队列中每次取出一个传送至onHandleIntent()方法，在该方法中对Intent对相应的处理。
+5),AIDL (Android Interface Definition Language) 是一种IDL 语言，用于生成可以在Android设备上两个进程之间进行进程间通信(interprocess communication, IPC)的代码。如果在一个进程中（例如Activity）要调用另一个进程中（例如Service）对象的操作，就可以使用AIDL生成可序列化的参数。 AIDL IPC机制是面向接口的，像COM或Corba一样，但是更加轻量级。它是使用代理类在客户端和实现端传递数据。
+
 19、Ubuntu编译安卓系统-百度
+https://mp.weixin.qq.com/s/a6q2YBlW_H6YaaENWgtcTw
+
 20、LaunchMode应用场景-百度-小米-乐视
+1),standard 模式
+这是默认模式，每次激活Activity时都会创建Activity实例，并放入任务栈中。使用场景：大多数Activity。
+2),singleTop 模式
+如果在任务的栈顶正好存在该Activity的实例，就重用该实例( 会调用实例的 onNewIntent() )，否则就会创建新的实例并放入栈顶，即使栈中已经存在该Activity的实例，只要不在栈顶，都会创建新的实例。使用场景如新闻类或者阅读类App的内容页面。
+3),singleTask 模式
+如果在栈中已经有该Activity的实例，就重用该实例(会调用实例的 onNewIntent() )。重用时，会让该实例回到栈顶，因此在它上面的实例将会被移出栈。如果栈中不存在该实例，将会创建新的实例放入栈中。使用场景如浏览器的主界面。不管从多少个应用启动浏览器，只会启动主界面一次，其余情况都会走onNewIntent，并且会清空主界面上面的其他页面。
+4),singleInstance 模式
+在一个新栈中创建该Activity的实例，并让多个应用共享该栈中的该Activity实例。一旦该模式的Activity实例已经存在于某个栈中，任何应用再激活该Activity时都会重用该栈中的实例( 会调用实例的 onNewIntent() )。其效果相当于多个应用共享一个应用，不管谁激活该 Activity 都会进入同一个应用中。使用场景如闹铃提醒，将闹铃提醒与闹铃设置分离。singleInstance不要用于中间页面，如果用于中间页面，跳转会有问题，比如：A -> B (singleInstance) -> C，完全退出后，在此启动，首先打开的是B
+
 21、Touch事件传递流程-小米
+分发（dispatchTouchEvent）：方法返回值为true表示事件被当前视图消费掉；返回为super.dispatchTouchEvent表示继续分发该事件。
+拦截（onInterceptTouchEvent）：方法返回值为true表示拦截这个事件并交由自身的onTouchEvent方法进行消费；返回false表示不拦截，需要继续传递给子视图。
+如果return super.onInterceptTouchEvent(ev)， 事件拦截分两种情况: 　
+1).如果该View(ViewGroup)存在子View且点击到了该子View, 则不拦截, 继续分发
+给子View 处理, 此时相当于return false。
+2).如果该View(ViewGroup)没有子View或者有子View但是没有点击中子View(此时ViewGroup
+相当于普通View), 则交由该View的onTouchEvent响应，此时相当于return true。 
+注意：一般的LinearLayout、 RelativeLayout、FrameLayout等ViewGroup默认不拦截， 而
+ScrollView、ListView等ViewGroup则可能拦截，得看具体情况。
+消费（onTouchEvent）：方法返回值为true表示当前视图可以处理对应的事件；返回值为false表示当前视图不处理这个事件，它会被传递给父视图的onTouchEvent方法进行处理。如果return super.onTouchEvent(ev)，事件处理分为两种情况：
+3).如果该View是clickable或者longclickable的,则会返回true, 表示消费
+了该事件, 与返回true一样;
+4).如果该View不是clickable或者longclickable的,则会返回false, 表示不
+消费该事件,将会向上传递,与返回false一样.
+注意：在Android系统中，拥有事件传递处理能力的类有以下三种。
+
+Activity：拥有分发和消费两个方法。
+ViewGroup：拥有分发、拦截和消费三个方法。
+View：拥有分发、消费两个方法。
+
 22、View绘制流程-百度
+Measured layout ondraw  postInvalidate
 23、多线程-360
+编写的代码则是穿插在这些逻辑中间，比如对用户触摸事件的检测和响应，对用户输入的处理，自定义View的绘制等。如果我们插入的代码比价耗时，如网络请求或数据库读取，就会阻塞UI线程其他逻辑的执行，从而导致界面卡顿。如果卡顿时间超过5秒，系统就会报ANR错误。所以，如果要执行耗时的操作，我们需要另起线程执行。
+在新线程执行完耗时的逻辑后，往往需要将结果反馈给界面，进行UI更新。Android的UI toolkit不是线程安全的，不能在非UI线程进行UI的更新，所有对界面的更新必须在UI线程进行。
+Android提供了四种常用的操作多线程的方式，分别是：
+1). Handler+Thread
+2). AsyncTask
+3). ThreadPoolExecutor
+4). IntentService
+
 24、Handler,Thread和HandlerThread的差别-小米
+①Handler：在android中负责发送和处理消息，通过它可以实现其他支线线程与主线程之间的消息通讯。
+②Thread：Java进程中执行运算的最小单位，亦即执行处理机调度的基本单位。某一进程中一路单独运行的程序。
+③HandlerThread：一个继承自Thread的类HandlerThread，Android中没有对Java中的Thread进行任何封装，而是提供了一个继承自Thread的类HandlerThread类，这个类对Java的Thread做了很多便利的封装。
+
 25、线程同步-百度
+
+1),synchronized关键字修饰的方法。 
+由于java的每个对象都有一个内置锁，当用此关键字修饰方法时， 
+内置锁会保护整个方法。在调用该方法前，需要获得内置锁，否则就处于阻塞状态
+2),使用特殊域变量(volatile)实现线程同步
+    a.volatile关键字为域变量的访问提供了一种免锁机制， 
+    b.使用volatile修饰域相当于告诉虚拟机该域可能会被其他线程更新， 
+    c.因此每次使用该域就要重新计算，而不是使用寄存器中的值 
+    d.volatile不会提供任何原子操作，它也不能用来修饰final类型的变量使用重入锁实现线程同步
+3), ReentrantLock类是可重入、互斥、实现了Lock接口的锁， 
+    它与使用synchronized方法和快具有相同的基本行为和语义，并且扩展了其能力
+ReenreantLock类的常用方法有：
+ReentrantLock() : 创建一个ReentrantLock实例 
+        lock() : 获得锁 
+        unlock() : 释放锁 
+注：ReentrantLock()还有一个可以创建公平锁的构造方法，但由于能大幅度降低程序运行效率，不推荐使用 
+4),ThreadLocal() : 创建一个线程本地变量 
+    get() : 返回此线程局部变量的当前线程副本中的值 
+    initialValue() : 返回此线程局部变量的当前线程的"初始值" 
+    set(T value) : 将此线程局部变量的当前线程副本中的值设置为value    
+5),LinkedBlockingQueue 类常用方法 
+    LinkedBlockingQueue() : 创建一个容量为Integer.MAX_VALUE的LinkedBlockingQueue 
+    put(E e) : 在队尾添加一个元素，如果队列满则阻塞 
+    size() : 返回队列中的元素个数 
+    take() : 移除并返回队头元素，如果队列空则阻塞 
+
 26、什么情况导致内存泄漏-美团
-27、ANR定位和修正
+1). 资源释放问题
+程序代码的问题,长期保持某些资源,如 Context、Cursor、IO 流的引用,资源得不到释放 造成内存泄露。
+2). 对象内存过大问题
+保存了多个耗用内存过大的对象(如 Bitmap、XML 文件),造成内存超出限制。
+3). static关键字的使用问题
+static 是 Java 中的一个关键字,当用它来修饰成员变量时,那么该变量就属于该类,而不是 该类的实例。所以用 static 修饰的变量,它的生命周期是很长的,如果用它来引用一些资源耗费 过多的实例(Context 的情况最多),这时就要谨慎对待了。 
+public class ClassName { 
+    private static Context mContext; 
+    //省略 
+} 
+以上的代码是很危险的,如果将 Activity 赋值到 mContext 的话。那么即使该 Activity 已经 onDestroy,但是由于仍有对象保存它的引用,因此该 Activity 依然不会被释放。 
+我们举 Android 文档中的一个例子。
+private static Drawable sBackground; 
+@Override protected void onCreate(Bundle state) { 
+    super.onCreate(state); 
+    TextView label = new TextView(this); 
+    //getApplicationContext         
+    if (sBackground == null) { 
+        sBackground = getDrawable(R.drawable.large_bitmap);
+    }
+
+    label.setBackgroundDrawable(sBackground);
+    setContentView(label);
+} 
+sBackground 是一个静态的变量,但是我们发现,我们并没有显式的保存 Contex 的引用, 但是,当 Drawable 与 View 连接之后,Drawable 就将 View 设置为一个回调,由于 View 中是 包含 Context 的引用的,所以,实际上我们依然保存了 Context 的引用。这个引用链如下: 
+Drawable->TextView-> Context 
+所以,最终该 Context 也没有得到释放,发生了内存泄露。
+
+针对 static 的解决方案 
+* 1) 应该尽量避免 static 成员变量引用资源耗费过多的实例,比如 Context。   
+* 2) Context尽量使用ApplicationContext,因为Application的Context的生命周期比较长,引用它不会出现内存泄露的问题。 
+* 3) 使 用 WeakReference 代 替 强 引 用 。 比 如 可 以 使 用 WeakReference mContextRef;
+
+4. 线程导致内存溢出
+
+线程产生内存泄露的主要原因在于线程生命周期的不可控。我们来考虑下面一段代码。
+
+public class MyActivity extends Activity { 
+    @Override 
+    public void onCreate(Bundle savedInstanceState) { 
+        super.onCreate(savedInstanceState);     
+        setContentView(R.layout.main);  
+        new MyThread().start();               
+    } 
+
+    private class MyThread extends Thread{ 
+        @Override 
+        public void run() { 
+            super.run(); 
+            //do somthing while(true) 
+        } 
+    } 
+} 
+
+这段代码很平常也很简单,是我们经常使用的形式。我们思考一个问题:假设 MyThread 的 run 函数是一个很费时的操作,当我们开启该线程后,将设备的横屏变为了竖屏,一 般情况下当屏幕转 换时会重新创建 Activity,按照我们的想法,老的 Activity 应该会被销毁才对,然而事实上并非如此。 
+由于我们的线程是 Activity 的内部类,所以 MyThread 中保存了 Activity 的一个引用,当 MyThread 的 run 函数没有结束时,MyThread 是不会被销毁的,因此它所引用的老的 Activity 也 不会被销毁,因此就出现了内存泄露的问题。 
+有些人喜欢用 Android 提供的 AsyncTask,但事实上 AsyncTask 的问题更加严重,Thread 只有 在 run 函数不结束时才出现这种内存泄露问题,然而 AsyncTask 内部的实现机制是运用了 ThreadPoolExcutor,该类产生的 Thread 对象的生命周期是不确定的,是应用程序无法控制的,因此 如果 AsyncTask 作为 Activity 的内部类,就更容易出现内存泄露的问题。
+
+针对这种线程导致的内存泄露问题的解决方案: 
+(一) 将线程的内部类,改为静态内部类(因为非静态内部类拥有外部类对象的强引用,而静 态类则不拥有)。 
+(二) 在线程内部采用弱引用保存 Context 引用
+
+27、c
 28、什么情况导致oom-乐视-美团
 29、Service与Activity之间通信的几种方式
 30、如何保证service在后台不被Kill
